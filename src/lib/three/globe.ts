@@ -76,12 +76,15 @@ export class AeroGlobe {
 	private visibleAirports: Airport[] = [];
 
 	// Camera state (spherical, eased every frame)
+	// Open over well-covered airspace (northern India) and close enough that individual
+	// aircraft read as aircraft rather than dots. The opening distance is slightly wider
+	// than the target so the camera eases in on load.
 	private targetLat = 22;
 	private targetLon = 78;
-	private targetDistance = GLOBE_RADIUS * 2.6;
+	private targetDistance = GLOBE_RADIUS * 1.85;
 	private curLat = 22;
 	private curLon = 78;
-	private curDistance = GLOBE_RADIUS * 3.4;
+	private curDistance = GLOBE_RADIUS * 2.6;
 	private autoRotate = false;
 	private autoRotateSpeed = 1.6; // deg/s
 
@@ -413,6 +416,12 @@ export class AeroGlobe {
 
 	setAutoRotate(on: boolean) {
 		this.autoRotate = on;
+		// The landing hero reads better with the whole planet in frame; the tracker opens
+		// closer so aircraft are immediately legible.
+		if (on) {
+			this.targetDistance = GLOBE_RADIUS * 2.45;
+			this.curDistance = GLOBE_RADIUS * 2.9;
+		}
 	}
 
 	setReducedMotion(on: boolean) {
