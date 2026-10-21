@@ -13,8 +13,11 @@ this project.
 
 ## Live demo
 
-- **Live site:** https://aeroglobe.vercel.app _(updated after deployment)_
+- **Live site:** https://aeroglobe-two.vercel.app
 - **Repository:** https://github.com/DIVYAPRIYADHARSHINI-GIT/aeroglobe
+
+Deployed on the Vercel Hobby (free) plan and connected to the GitHub repo, so every push to
+`main` auto-deploys to production.
 
 ![Landing page](docs/screenshots/landing.png)
 
