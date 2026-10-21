@@ -27,7 +27,12 @@
 		{ id: 'unknown', label: 'Unknown' }
 	];
 
-	let nearby = $derived(airportsNear(region.lat, region.lon, region.radiusNm * 1.852, 5));
+	// Use a generous floor on the search radius. The data radius can be as small as 25 NM
+	// when zoomed right in, and large parts of the world have no major airport inside a
+	// few hundred km, which left this list permanently empty over e.g. central India.
+	let nearby = $derived(
+		airportsNear(region.lat, region.lon, Math.max(1200, region.radiusNm * 1.852), 5)
+	);
 
 	// Watchlist entries that are currently in the feed.
 	let watched = $derived.by(() => {

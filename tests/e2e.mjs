@@ -80,6 +80,35 @@ const HAS_TRAFFIC = () => {
 	return !!chip && /Live|Demo/.test(chip.textContent || '');
 };
 
+/**
+ * Find a search term that genuinely matches current traffic.
+ *
+ * Typing a fixed letter is a bad assumption: a sparse live region may hold only a dozen
+ * aircraft whose callsigns share no particular character, which made these checks flaky
+ * against production while passing locally on the denser demo fleet.
+ */
+async function liveSearchTerm(page, selector = '.searchbar input') {
+	for (const term of ['A', 'I', 'U', 'S', 'B', 'E', 'G', 'N', '1', '0']) {
+		await page.evaluate((sel) => {
+			const el = document.querySelector(sel);
+			if (el) {
+				el.value = '';
+				el.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+		}, selector);
+		await page.click(selector);
+		await page.type(selector, term, { delay: 20 });
+		await sleep(700);
+		const hit = await page.evaluate(() =>
+			[...document.querySelectorAll('#search-results [role="option"]')].some((o) =>
+				/Flight/.test(o.textContent || '')
+			)
+		);
+		if (hit) return term;
+	}
+	return null;
+}
+
 async function run() {
 	const browser = await puppeteer.launch({
 		executablePath: CHROME,
@@ -173,14 +202,8 @@ async function run() {
 			check('altitude legend renders', counts.legend);
 
 			// Select an aircraft via search (deterministic; clicking a 3D instance is flaky).
-			await page.click('.searchbar input');
-			await page.type('.searchbar input', 'A', { delay: 20 });
-			const gotSuggestions = await waitFor(
-				page,
-				() => (document.querySelectorAll('#search-results [role="option"]').length || 0) > 0,
-				{ timeout: 6000 }
-			);
-			check('search returns instant suggestions', gotSuggestions);
+			const term = await liveSearchTerm(page);
+			check('search returns instant suggestions', !!term, String(term));
 
 			// Pick the first aircraft suggestion.
 			const pickedAircraft = await page.evaluate(() => {
@@ -304,7 +327,10 @@ async function run() {
 						cats: [...root.querySelectorAll('.cat')].map((b) => b.textContent?.trim()),
 						toggles: [...root.querySelectorAll('.toggle span')].map((s) => s.textContent?.trim()),
 						counters: [...root.querySelectorAll('.counter .label')].map((s) => s.textContent?.trim()),
-						watchItems: root.querySelectorAll('.list li').length
+						// The last section is "busiest airports nearby"; it must always have entries
+						// because the bundled airport list works offline.
+						airportItems: root.querySelectorAll('section:last-of-type .list li').length,
+						listItems: root.querySelectorAll('.list li').length
 					};
 				});
 				check('altitude and speed range sliders render', f.ranges === 4, String(f.ranges));
@@ -314,7 +340,7 @@ async function run() {
 					f.toggles.some((t) => /airborne only/i.test(t)) && f.toggles.some((t) => /trails/i.test(t)),
 					f.toggles.join(','));
 				check('"Planes in view" counter renders', f.counters.some((c) => /planes in view/i.test(c)), f.counters.join(','));
-				check('watchlist / nearby-airport lists render entries', f.watchItems > 0, String(f.watchItems));
+				check('busiest-airports-nearby list renders entries', f.airportItems > 0, String(f.airportItems));
 
 				// Toggling a filter must persist and not freeze the page.
 				await page.evaluate(() => {
@@ -402,9 +428,7 @@ async function run() {
 			// Contrast guard: the dark theme's neon accents are unreadable on a light panel,
 			// so light mode must re-tokenise them. Checks real computed colours via WCAG 2.1.
 			// The flight panel must be open for its text to be sampled.
-			await page.click('.searchbar input');
-			await page.type('.searchbar input', 'A', { delay: 20 });
-			await sleep(900);
+			await liveSearchTerm(page);
 			await page.evaluate(() => {
 				const opt = [...document.querySelectorAll('#search-results [role="option"]')].find((o) =>
 					/Flight/.test(o.textContent || '')
@@ -528,9 +552,7 @@ async function run() {
 			await page.evaluate(() => {
 				document.querySelector('.filters-btn')?.click();
 			});
-			await page.click('.searchbar input');
-			await page.type('.searchbar input', 'A', { delay: 20 });
-			await sleep(700);
+			await liveSearchTerm(page);
 			const picked = await page.evaluate(() => {
 				const opt = [...document.querySelectorAll('#search-results [role="option"]')].find((o) =>
 					/Flight/.test(o.textContent || '')
@@ -574,9 +596,7 @@ async function run() {
 			// not a valid assumption).
 			await page.goto(`${BASE}/track`, { waitUntil: 'domcontentloaded' });
 			await waitFor(page, HAS_TRAFFIC, { timeout: T });
-			await page.click('.searchbar input');
-			await page.type('.searchbar input', 'A', { delay: 20 });
-			await sleep(800);
+			await liveSearchTerm(page);
 			const realCallsign = await page.evaluate(() => {
 				const opt = [...document.querySelectorAll('#search-results [role="option"]')].find((o) =>
 					/Flight/.test(o.textContent || '')
@@ -625,8 +645,7 @@ async function run() {
 			// Open mobile search and select a flight -> bottom sheet.
 			await page.click('.fab-search');
 			await sleep(500);
-			await page.type('.mobile-search input', 'A', { delay: 25 });
-			await sleep(800);
+			await liveSearchTerm(page, '.mobile-search input');
 			const pickedMobile = await page.evaluate(() => {
 				const opt = [...document.querySelectorAll('#search-results [role="option"]')].find((o) =>
 					/Flight/.test(o.textContent || '')
