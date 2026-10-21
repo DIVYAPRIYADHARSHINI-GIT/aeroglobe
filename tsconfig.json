@@ -1,0 +1,16 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"strict": true,
+		// SvelteKit 3 resolves #lib through package.json "imports" at build time;
+		// mirror it here so svelte-check/tsc resolve the same specifiers.
+		"paths": {
+			"#lib": ["./src/lib/index.ts"],
+			"#lib/*": ["./src/lib/*"]
+		}
+	},
+	"include": ["src", "tests/**/*.test.ts", "vite.config.ts"],
+	// tests/e2e.mjs is a plain Node + Puppeteer harness, not app source. It runs under
+	// node directly and is intentionally outside the TypeScript project.
+	"exclude": ["tests/e2e.mjs"]
+}

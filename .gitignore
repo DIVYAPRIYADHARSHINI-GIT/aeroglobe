@@ -1,0 +1,28 @@
+node_modules/
+
+# Build output
+.svelte-kit/
+build/
+dist/
+.vercel/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Test scratch (ad-hoc screenshot/debug harnesses)
+tests/_*.mjs
