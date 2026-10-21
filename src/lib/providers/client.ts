@@ -38,6 +38,27 @@ function parse(providerId: ProviderId, payload: unknown): Aircraft[] {
 }
 
 /**
+ * Did this provider actually answer?
+ *
+ * A well-formed response with zero aircraft is a SUCCESS, not a failure: large parts of the
+ * world (oceans, the Sahara, the poles) genuinely have no ADS-B coverage, and the default
+ * camera can easily sit over one. Treating "empty" as failure used to walk the whole chain
+ * and drop into demo mode even though the feeds were perfectly healthy, so this checks for
+ * the expected response *shape* instead of a non-zero count.
+ */
+function isUsable(providerId: ProviderId, payload: unknown): boolean {
+	if (!payload || typeof payload !== 'object') return false;
+	const src = SOURCE_BY_ID.get(providerId);
+	if (!src) return false;
+	if (src.kind === 'opensky') {
+		// OpenSky sends states: null when a bbox has no traffic.
+		return 'states' in payload || 'time' in payload;
+	}
+	const root = payload as { ac?: unknown; aircraft?: unknown };
+	return Array.isArray(root.ac) || Array.isArray(root.aircraft);
+}
+
+/**
  * Try one provider: browser-direct when the feed is CORS-friendly, then our proxy.
  * Returns null when this provider cannot answer right now.
  */
@@ -50,8 +71,9 @@ async function tryProvider(providerId: ProviderId, region: Region, deadline: num
 	if (src.corsFriendly && budget() > 250) {
 		try {
 			const data = await fetchJson(src.url(region), budget());
-			const aircraft = parse(providerId, data);
-			if (aircraft.length) return { provider: providerId, aircraft, via: 'browser' };
+			if (isUsable(providerId, data)) {
+				return { provider: providerId, aircraft: parse(providerId, data), via: 'browser' };
+			}
 		} catch {
 			/* fall through to the proxy */
 		}
@@ -66,8 +88,9 @@ async function tryProvider(providerId: ProviderId, region: Region, deadline: num
 				radius: String(Math.round(region.radiusNm))
 			});
 			const data = await fetchJson(`/api/adsb?${qs}`, budget());
-			const aircraft = parse(providerId, data);
-			if (aircraft.length) return { provider: providerId, aircraft, via: 'proxy' };
+			if (isUsable(providerId, data)) {
+				return { provider: providerId, aircraft: parse(providerId, data), via: 'proxy' };
+			}
 		} catch {
 			/* provider exhausted */
 		}

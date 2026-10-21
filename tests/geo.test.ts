@@ -132,6 +132,14 @@ describe('provider normalisation', () => {
 		expect(normaliseOpenSky(undefined)).toEqual([]);
 	});
 
+	it('treats a well-formed empty response as valid, not as a failure', () => {
+		// Large regions (oceans, the Sahara, the poles) genuinely have no ADS-B coverage.
+		// An empty list must parse cleanly so the chain does not fall through to demo mode.
+		expect(normaliseReadsb({ ac: [] })).toEqual([]);
+		expect(normaliseReadsb({ aircraft: [] })).toEqual([]);
+		expect(normaliseOpenSky({ time: 123, states: null })).toEqual([]);
+	});
+
 	it('normalises OpenSky state vectors and converts units', () => {
 		const payload = {
 			time: 1792565420,

@@ -115,8 +115,12 @@ async function run() {
 			const steps = await page.$$eval('.how-step', (els) => els.length);
 			check('"How it works" strip has 3 steps', steps === 3, String(steps));
 
-			const canvas = await page.$('.hero-globe canvas');
-			check('hero renders a WebGL globe canvas', !!canvas);
+			// Wait rather than instant-query: on a cold serverless/CDN fetch the hydration
+			// that mounts the canvas can land after domcontentloaded.
+			const canvas = await waitFor(page, () => !!document.querySelector('.hero-globe canvas'), {
+				timeout: 10000
+			});
+			check('hero renders a WebGL globe canvas', canvas);
 
 			// innerText-style normalisation: Svelte keeps source newlines/tabs in textContent.
 			const credit = (await page.$eval('footer .credit', (el) => el.textContent || '')).replace(/\s+/g, ' ').trim();

@@ -52,7 +52,10 @@ export class TrafficStore {
 	/** Altitude history for the selected aircraft's mini graph (this session only). */
 	selectedHistory: TrackPoint[] = [];
 
-	private region: Region = { lat: 20, lon: 10, radiusNm: 250 };
+	// Default to busy, well-covered airspace (northern India) rather than an empty ocean or
+	// desert, so a first-time visitor sees real traffic immediately. The globe overwrites
+	// this as soon as it reports its own camera region.
+	private region: Region = { lat: 24, lon: 77, radiusNm: 250 };
 	private timer: ReturnType<typeof setTimeout> | null = null;
 	private inFlight = false;
 	private stopped = true;

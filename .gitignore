@@ -26,3 +26,5 @@ yarn-error.log*
 
 # Test scratch (ad-hoc screenshot/debug harnesses)
 tests/_*.mjs
+.vercel
+.env*
